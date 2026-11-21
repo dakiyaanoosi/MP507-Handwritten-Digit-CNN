@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MP507 | Handwritten Digit Recognition using CNN</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.6;
+    }
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      color: #ffffff;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+    }
+    header h1 { font-size: 1.85rem; font-weight: 700; margin-bottom: 0.25rem; }
+    header p { font-size: 0.98rem; opacity: 0.9; }
+    main {
+      max-width: 1080px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.75rem;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+    }
+    .card h2 {
+      font-size: 1.25rem;
+      color: #1e3a8a;
+      margin-bottom: 0.75rem;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 0.45rem;
+    }
+    .canvas-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 1rem 0;
+    }
+    canvas {
+      width: 280px;
+      height: 280px;
+      max-width: 100%;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
+      background: #ffffff;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: 280px;
+      margin-top: 0.9rem;
+    }
+    button {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+    button:active { transform: scale(0.98); }
+    .btn-primary { background: #2563eb; color: #ffffff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .upload-box {
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .upload-box label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 0.4rem;
+    }
+    .upload-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    select, input[type="file"] {
+      width: 100%;
+      padding: 0.45rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: #f8fafc;
+    }
+    .result-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.2rem;
+    }
+    .digit-display {
+      font-size: 3.4rem;
+      font-weight: 800;
+      color: #1d4ed8;
+      line-height: 1;
+    }
+    .meta-stats { text-align: right; font-size: 0.92rem; color: #334155; }
+    .meta-stats strong { color: #0f172a; }
+    .prob-list { display: flex; flex-direction: column; gap: 0.45rem; }
+    .prob-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 56px;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.88rem;
+    }
+    .prob-label { font-weight: 700; color: #334155; text-align: center; }
+    .bar-track {
+      height: 14px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #94a3b8;
+      border-radius: 999px;
+      transition: width 0.35s ease, background 0.2s ease;
+    }
+    .bar-fill.top { background: #2563eb; }
+    .prob-pct { text-align: right; font-variant-numeric: tabular-nums; color: #475569; }
+    .status-msg {
+      margin-top: 0.75rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      display: none;
+    }
+    .status-msg.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .status-msg.info { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    footer {
+      text-align: center;
+      padding: 1.25rem;
+      color: #64748b;
+      font-size: 0.88rem;
+    }
+    @media (max-width: 768px) {
+      main { grid-template-columns: 1fr; margin: 1rem auto; }
+      header h1 { font-size: 1.45rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MP507: Handwritten Digit Recognition using CNN</h1>
+    <p>Department of CSE, UNSIET, Veer Bahadur Singh Purvanchal University, Jaunpur</p>
+  </header>
+
+  <main>
+    <section class="card" aria-label="Digit Input Panel">
+      <h2>1. Draw or Upload Digit</h2>
+      <div class="canvas-wrap">
+        <canvas id="digitCanvas" width="280" height="280"></canvas>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="clearBtn">Clear</button>
+          <button type="button" class="btn-primary" id="predictCanvasBtn">Classify Digit</button>
+        </div>
+      </div>
+
+      <div class="upload-box">
+        <label for="imageUpload">Or Upload a Digit Image (PNG / JPG / WEBP)</label>
+        <div class="upload-controls">
+          <input type="file" id="imageUpload" accept="image/png, image/jpeg, image/webp" />
+          <select id="invertMode" aria-label="Contrast inversion mode">
+            <option value="auto" selected>Polarity: Auto-Detect (Recommended)</option>
+            <option value="true">Dark Ink on Light Paper (Invert)</option>
+            <option value="false">White Digit on Black Background (MNIST Native)</option>
+          </select>
+          <button type="button" class="btn-primary" id="predictUploadBtn">Classify Uploaded Image</button>
+        </div>
+      </div>
+      <div id="statusMsg" class="status-msg" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="card" aria-label="Classification Output Panel">
+      <h2>2. CNN Classification Result</h2>
+      <div class="result-hero">
+        <div>
+          <div style="font-size: 0.85rem; color: #475569; font-weight: 600;">PREDICTED DIGIT</div>
+          <div class="digit-display" id="predictedDigit">—</div>
+        </div>
+        <div class="meta-stats">
+          <div>Confidence: <strong id="confidenceText">—</strong></div>
+          <div>Inference Time: <strong id="latencyText">—</strong></div>
+          <div>Input Tensor: <strong>1 × 28 × 28 × 1</strong></div>
+        </div>
+      </div>
+      <div class="prob-list" id="probList"></div>
+    </section>
+  </main>
+
+  <footer>
+    MP507 Mini Project | Convolutional Neural Network (Keras 3 / TensorFlow + OpenCV + Flask)
+  </footer>
+
+  <script>
+    const canvas = document.getElementById("digitCanvas");
+    const ctx = canvas.getContext("2d");
+    const statusEl = document.getElementById("statusMsg");
+    const probListEl = document.getElementById("probList");
+    let isDrawing = false;
+
+    function initCanvas() {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 18;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }
+
+    function initProbabilityBars() {
+      probListEl.innerHTML = "";
+      for (let d = 0; d < 10; d++) {
+        const row = document.createElement("div");
+        row.className = "prob-row";
+        row.innerHTML = `
+          <span class="prob-label">${d}</span>
+          <div class="bar-track"><div class="bar-fill" id="bar-${d}"></div></div>
+          <span class="prob-pct" id="pct-${d}">0.00%</span>
+        `;
+        probListEl.appendChild(row);
+      }
+    }
+
+    function getCanvasPoint(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function startStroke(x, y) {
+      isDrawing = true;
+      const pt = getCanvasPoint(x, y);
+      ctx.beginPath();
+      ctx.moveTo(pt.x, pt.y);
+    }
+
+    function moveStroke(x, y) {
+      if (!isDrawing) return;
+      const pt = getCanvasPoint(x, y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+    }
+
+    function endStroke() {
+      isDrawing = false;
+      ctx.closePath();
+    }
+
+    canvas.addEventListener("mousedown", (e) => startStroke(e.clientX, e.clientY));
+    canvas.addEventListener("mousemove", (e) => moveStroke(e.clientX, e.clientY));
+    window.addEventListener("mouseup", endStroke);
+
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      startStroke(t.clientX, t.clientY);
+    }, { passive: false });
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      moveStroke(t.clientX, t.clientY);
+    }, { passive: false });
+    canvas.addEventListener("touchend", endStroke);
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = type ? `status-msg ${type}` : "status-msg";
+    }
+
+    function updateResultUI(data) {
+      document.getElementById("predictedDigit").textContent = data.predicted_digit;
+      document.getElementById("confidenceText").textContent = `${data.confidence.toFixed(2)}%`;
+      document.getElementById("latencyText").textContent = `${data.inference_time_ms} ms`;
+
+      data.probabilities.forEach((pct, idx) => {
+        const bar = document.getElementById(`bar-${idx}`);
+        const label = document.getElementById(`pct-${idx}`);
+        bar.style.width = `${pct}%`;
+        bar.className = idx === data.predicted_digit ? "bar-fill top" : "bar-fill";
+        label.textContent = `${pct.toFixed(2)}%`;
+      });
+    }
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      initCanvas();
+      document.getElementById("predictedDigit").textContent = "—";
+      document.getElementById("confidenceText").textContent = "—";
+      document.getElementById("latencyText").textContent = "—";
+      initProbabilityBars();
+      setStatus("", "");
+    });
+
+    document.getElementById("predictCanvasBtn").addEventListener("click", async () => {
+      setStatus("Running preprocessing and CNN inference...", "info");
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        const res = await fetch("/api/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: dataUrl })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.error || "Prediction failed.", "error");
+          return;
+        }
+        updateResultUI(data);
+        setStatus("Classification completed successfully.", "info");
+      } catch (err) {
+        setStatus("Network error while contacting Flask server.", "error");
+      }
+    });
+
+    document.getElementById("predictUploadBtn").addEventListener("click", async () => {
+      const fileInput = document.getElementById("imageUpload");
+      if (!fileInput.files.length) {
+        setStatus("Please select an image file first.", "error");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("invert", document.getElementById("invertMode").value);
+
+      setStatus("Uploading image and running CNN inference...", "info");
+      try {
+        const res = await fetch("/api/predict", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.error || "Upload prediction failed.", "error");
+          return;
+        }
+        updateResultUI(data);
+        setStatus("Uploaded image classified successfully.", "info");
+      } catch (err) {
+        setStatus("Network error while uploading image.", "error");
+      }
+    });
+
+    initCanvas();
+    initProbabilityBars();
+  </script>
+</body>
+</html>
